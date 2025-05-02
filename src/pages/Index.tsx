@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload, Signature, Eraser } from "lucide-react";
-import { PDFPageInfo, FieldElement, validatePDF } from "@/lib/pdfUtils";
+import { PDFPageInfo, FieldElement, validatePDF, renderPDFPages } from "@/lib/pdfUtils";
 import ElementToolbox from "@/components/ElementToolbox";
 import PDFViewer from "@/components/PDFViewer";
 import UploadDialog from "@/components/UploadDialog";
@@ -15,70 +14,26 @@ const Index = () => {
   const [signature, setSignature] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [isFileLoaded, setIsFileLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Simulated PDF rendering function (in a real app, you'd use PDF.js or similar)
-  const renderPDF = async (file: File) => {
-    toast.loading("Processing PDF file...");
-    
-    try {
-      // Simulating PDF processing with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes, create a dummy page
-      const dummyPages: PDFPageInfo[] = [];
-      
-      // Create a canvas to render the PDF
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      if (ctx) {
-        // For demo: Create placeholder pages
-        canvas.width = 612; // Standard US Letter width at 72 DPI
-        canvas.height = 792; // Standard US Letter height at 72 DPI
-        
-        // Fill with white
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Add some visual elements to simulate a document
-        ctx.fillStyle = '#eee';
-        ctx.fillRect(50, 50, 512, 100);
-        ctx.fillRect(50, 170, 512, 400);
-        ctx.fillRect(50, 590, 250, 50);
-        ctx.fillRect(312, 590, 250, 50);
-        
-        const dataURL = canvas.toDataURL();
-        
-        // Add two pages for demo purposes
-        dummyPages.push({
-          pageNumber: 1,
-          width: canvas.width,
-          height: canvas.height,
-          dataURL
-        });
-        
-        dummyPages.push({
-          pageNumber: 2,
-          width: canvas.width,
-          height: canvas.height,
-          dataURL
-        });
-      }
-      
-      setPdfPages(dummyPages);
-      setIsFileLoaded(true);
-      toast.dismiss();
-      toast.success("PDF file loaded successfully");
-    } catch (error) {
-      console.error("Error processing PDF:", error);
-      toast.dismiss();
-      toast.error("Error processing PDF");
-    }
-  };
-  
-  const handleFileSelected = (file: File) => {
+  const handleFileSelected = async (file: File) => {
     if (validatePDF(file)) {
-      renderPDF(file);
+      setIsLoading(true);
+      toast.loading("Processing PDF file...");
+      
+      try {
+        const pages = await renderPDFPages(file);
+        setPdfPages(pages);
+        setIsFileLoaded(true);
+        toast.dismiss();
+        toast.success("PDF file loaded successfully");
+      } catch (error) {
+        console.error("Error processing PDF:", error);
+        toast.dismiss();
+        toast.error("Error processing PDF");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
   
@@ -182,6 +137,7 @@ const Index = () => {
             <Button 
               onClick={() => setUploadDialogOpen(true)}
               className="bg-docusign-blue hover:bg-docusign-darkblue"
+              disabled={isLoading}
             >
               <Upload size={16} className="mr-2" />
               Upload PDF
@@ -190,7 +146,14 @@ const Index = () => {
         </div>
       </header>
       
-      {isFileLoaded ? (
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-t-docusign-blue border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Processing PDF...</p>
+          </div>
+        </div>
+      ) : isFileLoaded ? (
         <div className="flex flex-1 container py-6">
           {/* Left sidebar for tools */}
           <div className="w-64 pr-6">

@@ -1,5 +1,9 @@
 
 import { toast } from "sonner";
+import * as pdfjs from 'pdfjs-dist';
+
+// Initialize PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export interface PDFPageInfo {
   pageNumber: number;
@@ -60,4 +64,58 @@ export const createNewElement = (
     pageNumber,
     value: type === 'date' ? new Date().toLocaleDateString() : '',
   };
+};
+
+export const renderPDFPages = async (file: File): Promise<PDFPageInfo[]> => {
+  try {
+    // Convert PDF file to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Load the PDF document
+    const loadingTask = pdfjs.getDocument(arrayBuffer);
+    const pdf = await loadingTask.promise;
+    
+    const totalPages = pdf.numPages;
+    const pages: PDFPageInfo[] = [];
+    
+    // Process each page
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdf.getPage(i);
+      
+      // Get viewport at default scale
+      const viewport = page.getViewport({ scale: 1.0 });
+      
+      // Create canvas for rendering
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!context) {
+        throw new Error('Could not get canvas context');
+      }
+      
+      // Set canvas dimensions to match the viewport
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      // Render PDF page to canvas
+      await page.render({
+        canvasContext: context,
+        viewport,
+      }).promise;
+      
+      // Create page info object
+      pages.push({
+        pageNumber: i,
+        width: viewport.width,
+        height: viewport.height,
+        dataURL: canvas.toDataURL(),
+      });
+    }
+    
+    return pages;
+  } catch (error) {
+    console.error('Error rendering PDF:', error);
+    toast.error('Failed to render PDF. Please try another file.');
+    throw error;
+  }
 };
