@@ -1,7 +1,7 @@
 
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Upload, FileText } from "lucide-react";
 import { validatePDF } from "@/lib/pdfUtils";
@@ -76,6 +76,9 @@ const UploadDialog = ({ isOpen, onClose, onFileSelected }: UploadDialogProps) =>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload PDF Document</DialogTitle>
+          <DialogDescription>
+            Upload a PDF file to add signatures and other fields.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div
